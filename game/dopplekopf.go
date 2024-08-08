@@ -52,9 +52,13 @@ func (game *Dopplekopf) Process() {
 
 	// when the game is started it knows the players and the player
 	// that start the first round (_game.firstTrickPlayerIndex_).
-	// Since we need to trace a chain of who won the last tick
+	// Since we need to trace a chain of who won the last trick
 	// we keep an initial reference and mutate whenever there
-	// is a new winner after the evaluation
+	// is a new winner after the evaluation.
+	// Knowing the last winner implies knowing who will start
+	// the next trick. For the the trick that is since evaulations
+	// such as claims or party matching is tightly coupled to
+	// who played the card.
 	previousTrickWinnerIndex := game.firstTrickPlayerIndex
 
 	// start waiting for scanner input.

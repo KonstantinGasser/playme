@@ -30,17 +30,14 @@ func NewTrick(openingPlayerIndex int, cards [4]card.Mode) Open {
 	}
 }
 
-type Claim struct {
-	cardKind    card.Kind
-	playerIndex int
-}
-
-func (claim Claim) By() int {
-	return claim.playerIndex
-}
-
-func (claim Claim) Kind() card.Kind {
-	return claim.cardKind
+func (open Open) Close() Closed {
+	return Closed{
+		cards:             open.cards,
+		playerWinnerIndex: open.currentWinnerIndex,
+		claims:            open.claims,
+		points:            open.points,
+		events:            []any{},
+	}
 }
 
 func (trick *Open) Replay(previousWinnerIndex int) Closed {
@@ -51,7 +48,7 @@ func (trick *Open) Replay(previousWinnerIndex int) Closed {
 
 		// counting points is independent from who wins the
 		// trick and can be counted directely without checks.
-		trick.points += card.Points() // mode.Points(card)
+		trick.points += uint8(card.Value())
 
 		// check if new played cards rankes higher than current
 		// high card and replace if so. if changes update current
@@ -122,14 +119,4 @@ func (closed Closed) Claims() [3]Claim {
 
 func (closed Closed) WinnerIndex() int {
 	return closed.playerWinnerIndex
-}
-
-func (openTrick Open) Close() Closed {
-	return Closed{
-		cards:             openTrick.cards,
-		playerWinnerIndex: openTrick.currentWinnerIndex,
-		claims:            openTrick.claims,
-		points:            openTrick.points,
-		events:            []any{},
-	}
 }
