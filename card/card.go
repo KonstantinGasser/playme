@@ -7,21 +7,20 @@ const (
 	Eichel Kind = iota
 	Blatt
 	Herz
-	Shell
+	Schellen
 
-	Eight Value = iota
-	Nine
-	Ten
-	Unter
-	Ober
-	King
-	Ace
+	Eight Value = 8
+	Nine  Value = 9
+	Ten   Value = 10
+	Unter Value = 2
+	Ober  Value = 3
+	King  Value = 4
+	Ace   Value = 11
 )
 
 type Mode interface {
 	Kind() Kind
 	Value() Value
-	Points() uint8
 	IsTrump() bool
 	GreaterThan(other Mode) bool
 }
