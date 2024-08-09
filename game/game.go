@@ -5,29 +5,44 @@ import (
 	"github.com/KonstantinGasser/playme/trick"
 )
 
+// TODO: Not sure about that one..
+// Will be figured out once we start with
+// the implementation of the scanner -> engine
 type Scanner interface {
-	Scan() [4]card.Mode
+	Scan() [4]card.Card
 }
 
-type Dopplekopf struct {
+type Replayer interface {
+	Replay(previousWinnerIndex int) trick.Played
+}
+
+// something that can be shown on the display
+// when an violation is recoded
+type ErrRuleViolation struct{}
+
+type Recorder interface {
+	Apply(trick.Claim) *ErrRuleViolation
+	Add(uint8) error
+}
+
+type Game[T Replayer, R Recorder] struct {
 	// a call to scan should return the next 4 playing cards
 	// to be evaluated together.
-	scanner Scanner
-	// maintains state about each player including claims of a player.
-	players [4]Player
+	scanner  Scanner
+	recorder Recorder
 	// indicates the first player of the first trick played.
 	// This is used to reconstruct a causal
 	firstTrickPlayerIndex int // on new game always player 0 == index = 0
-	tricks                <-chan trick.Open
+	tricks                <-chan T
 	events                []any
 }
 
-func NewDoppleKopf(scanner Scanner, players [4]Player) *Dopplekopf {
-	return &Dopplekopf{
+func NewDoppleKopf[T Replayer, R Recorder](scanner Scanner, recorder Recorder) *Game[T, R] {
+	return &Game[T, R]{
 		scanner:               scanner,
-		players:               players,
+		recorder:              recorder,
 		firstTrickPlayerIndex: 0,
-		tricks:                make(<-chan trick.Open),
+		tricks:                make(<-chan T),
 		events:                []any{},
 	}
 }
@@ -38,7 +53,7 @@ func NewDoppleKopf(scanner Scanner, players [4]Player) *Dopplekopf {
 // Cards will be processed and evaluated in the order received.
 // Thus it is the responsability of the external to ensure no
 // rule violations introduced by re-ordering occure.
-func (game Dopplekopf) Listen() {}
+func (game Game[T, R]) Listen() {}
 
 // Process is a blocking call that returns either on
 // unrecoverable errors or once a game is determined
@@ -48,7 +63,7 @@ func (game Dopplekopf) Listen() {}
 // and evaluation of received tricks. Which mode is played
 // is not important and abstracted by what ever mode is reflected
 // by the implemented cards.
-func (game *Dopplekopf) Process() {
+func (game *Game[T, R]) Process() {
 
 	// when the game is started it knows the players and the player
 	// that start the first round (_game.firstTrickPlayerIndex_).
@@ -59,6 +74,10 @@ func (game *Dopplekopf) Process() {
 	// the next trick. For the the trick that is since evaulations
 	// such as claims or party matching is tightly coupled to
 	// who played the card.
+	// TODO: maybe this should also be moved into the recorder?
+	// In the recorder this information might be required anyway whereas
+	// here it is not really except for the Replayer. But then again
+	// maybe Recorder should be generic over a Replayer?
 	previousTrickWinnerIndex := game.firstTrickPlayerIndex
 
 	// start waiting for scanner input.
@@ -76,19 +95,21 @@ func (game *Dopplekopf) Process() {
 		// _missingColor_ map.
 		game.FindViolation(closedTrick)
 
+		// forward counted points in the trick to recorder.
+		game.recorder.Add(closedTrick.Points())
+
 		// after each trick update the index of the player
 		// who won the previous trick / is starting the next trick.
 		// By default winner of last trick will be initial winner of
 		// next trick until beaten by another player
-		previousTrickWinnerIndex = closedTrick.WinnerIndex()
+		previousTrickWinnerIndex = closedTrick.Winner()
 	}
 }
 
-func (game *Dopplekopf) FindViolation(closed trick.Closed) {
-	for _, claim := range closed.Claims() {
-		if _, ok := game.players[claim.By()].missingKind[claim.Kind()]; ok {
-			// violation found by player.
-			// TODO: What now? What should we do?
+func (game *Game[T, R]) FindViolation(ct trick.Played) {
+	for _, claim := range ct.Claims() {
+		if err := game.recorder.Apply(claim); err != nil {
+			// TODO: figure out what to do when violation is found
 		}
 	}
 }

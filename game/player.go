@@ -12,7 +12,7 @@ const (
 
 type Player struct {
 	id   int
-	hand [12]card.Mode
+	hand [12]card.Card
 	// lazily evaluated throughout the round.
 	// __Should__ not be "Unknown" after the round
 	// is finished.

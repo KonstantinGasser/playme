@@ -18,9 +18,10 @@ const (
 	Ace   Value = 11
 )
 
-type Mode interface {
+type Card interface {
 	Kind() Kind
 	Value() Value
 	IsTrump() bool
-	GreaterThan(other Mode) bool
+	GreaterThan(other Card) bool
+	// IndicatesAffiliation() bool // not sure thou??
 }
